@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "dev:ws": "node scripts/ws-server.cjs",
-    "build": "vite build",
+    "build": "vite build && node scripts/generate-vercel-ssr-entry.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
