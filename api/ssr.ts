@@ -59,13 +59,18 @@ async function readBody(req: NodeRequest): Promise<Uint8Array | undefined> {
   }
 
   if (chunks.length === 0) return undefined;
+
+  // Buffer is the most compatible representation for fetch body.
   return Buffer.concat(chunks);
 }
 
 async function getSsrServer(): Promise<{ fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response }> {
   // Generated during `npm run build`.
+  // @ts-ignore - generated file (exists after build) and may have no .d.ts in Vercel typecheck
   const mod = await import("../dist/server/vercel-ssr-entry.mjs");
-  return (mod as { default: { fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response } }).default;
+
+  const entry = (mod as { default?: unknown }).default ?? mod;
+  return entry as { fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response };
 }
 
 export default async function handler(req: NodeRequest, res: NodeResponse) {
@@ -78,7 +83,7 @@ export default async function handler(req: NodeRequest, res: NodeResponse) {
   const request = new Request(url, {
     method: req.method || "GET",
     headers,
-    body,
+    body: body as unknown as BodyInit,
   });
 
   const response = await server.fetch(request, {}, {});
