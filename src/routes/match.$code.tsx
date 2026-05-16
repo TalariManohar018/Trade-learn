@@ -22,6 +22,18 @@ function MatchRoom() {
   const pending = useMatchStore((s) => s.pending[code]);
   const lastError = useMatchStore((s) => s.lastError);
 
+  const baseUrl =
+    (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_PUBLIC_BASE_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+  const inviteUrl = baseUrl ? `${baseUrl}/match/${code}` : "";
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   // ensure user joins
   useEffect(() => {
     connect();
@@ -60,6 +72,23 @@ function MatchRoom() {
         <div className="max-w-xl mx-auto p-12 text-center">
           <h1 className="text-3xl font-extrabold mb-2">CONNECTING…</h1>
           <p className="text-muted-foreground mb-6 font-mono text-sm">Joining room <span className="text-foreground">{code}</span>.</p>
+
+          <div className="bg-surface border border-border p-4 rounded-sm flex items-center gap-3 mb-4">
+            <input readOnly value={inviteUrl} className="flex-1 bg-transparent font-mono text-xs outline-none truncate" />
+            <button onClick={copy} disabled={!inviteUrl} className="px-3 py-2 bg-primary text-background font-bold rounded-sm text-xs disabled:opacity-50">
+              {copied ? "COPIED" : "COPY LINK"}
+            </button>
+          </div>
+
+          {lastError && (
+            <div className="text-left">
+              <p className="text-danger text-xs font-mono mb-2">{lastError}</p>
+              <p className="text-muted-foreground text-xs font-mono">
+                If this is deployed on Vercel, you must set a public WebSocket endpoint via <span className="text-foreground">VITE_WS_URL</span>
+                (use <span className="text-foreground">wss://…</span> on https sites).
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );

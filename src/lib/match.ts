@@ -128,10 +128,40 @@ type WsServerMessage =
 
 let socket: WebSocket | null = null;
 let outboundQueue: WsMessage[] = [];
+let reconnectTimer: number | null = null;
+
+function normalizeWsUrl(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  if (typeof window === "undefined") return null;
+
+  // Allow path-only values like "/ws" (same host).
+  if (v.startsWith("/")) {
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${protocol}://${window.location.host}${v}`;
+  }
+
+  // Allow http(s) URLs and convert.
+  if (v.startsWith("http://")) return `ws://${v.slice("http://".length)}`;
+  if (v.startsWith("https://")) return `wss://${v.slice("https://".length)}`;
+
+  // Accept ws(s) as-is, but avoid mixed content on https pages.
+  if (v.startsWith("ws://") && window.location.protocol === "https:") {
+    return `wss://${v.slice("ws://".length)}`;
+  }
+
+  // If user provides host:port without scheme.
+  if (!v.includes("://")) {
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${protocol}://${v}`;
+  }
+
+  return v;
+}
 
 function getWsUrl(): string | null {
   const env = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_WS_URL;
-  if (env) return env;
+  if (env) return normalizeWsUrl(env);
   if (typeof window === "undefined") return null;
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   return `${protocol}://${window.location.hostname}:8787`;
@@ -144,11 +174,19 @@ function ensureSocket(
   if (socket || typeof window === "undefined") return;
   const url = getWsUrl();
   if (!url) return;
+  if (reconnectTimer) {
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
   socket = new WebSocket(url);
+  set((s) => ({ lastError: s.lastError === "Connection closed" ? null : s.lastError }));
+
   socket.onopen = () => {
     outboundQueue.forEach((msg) => socket?.send(JSON.stringify(msg)));
     outboundQueue = [];
+    set(() => ({ lastError: null }));
   };
+
   socket.onmessage = (event) => {
     let msg: WsServerMessage | null = null;
     try {
@@ -172,9 +210,19 @@ function ensureSocket(
       }));
     }
   };
+
+  socket.onerror = () => {
+    set(() => ({ lastError: "Unable to connect to match server" }));
+  };
+
   socket.onclose = () => {
     socket = null;
     set((s) => ({ lastError: s.lastError ?? "Connection closed" }));
+
+    // If we still have pending work (room create/join/trades queued), attempt a light reconnect.
+    if (typeof window !== "undefined" && (outboundQueue.length > 0 || Object.values(get().pending).some(Boolean))) {
+      reconnectTimer = window.setTimeout(() => ensureSocket(set, get), 1000);
+    }
   };
 }
 
