@@ -163,8 +163,13 @@ function getWsUrl(): string | null {
   const env = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_WS_URL;
   if (env) return normalizeWsUrl(env);
   if (typeof window === "undefined") return null;
+
+  const hostname = window.location.hostname;
+  const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  if (!isLocalHost) return null;
+
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${window.location.hostname}:8787`;
+  return `${protocol}://${hostname}:8787`;
 }
 
 function ensureSocket(
@@ -173,7 +178,13 @@ function ensureSocket(
 ) {
   if (socket || typeof window === "undefined") return;
   const url = getWsUrl();
-  if (!url) return;
+  if (!url) {
+    set(() => ({
+      lastError:
+        "Match server not configured. Set VITE_WS_URL to a public ws(s) endpoint (e.g. wss://your-ws-host.example) and redeploy.",
+    }));
+    return;
+  }
   if (reconnectTimer) {
     window.clearTimeout(reconnectTimer);
     reconnectTimer = null;
