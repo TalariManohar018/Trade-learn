@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 
 export type User = {
   id: string;
@@ -19,6 +19,12 @@ type AuthState = {
   login: (email: string, password: string) => boolean;
   logout: () => void;
   addResult: (won: boolean, profit: number, xp: number) => void;
+};
+
+const noopStorage: StateStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
 };
 
 const palette = ["#00ff88", "#ff3b3b", "#7c3aed", "#f59e0b", "#06b6d4", "#ec4899"];
@@ -78,7 +84,12 @@ export const useAuth = create<AuthState>()(
         if (idx >= 0) { users[idx] = { ...users[idx], ...updated }; writeUsers(users); }
       },
     }),
-    { name: "sd:auth" }
+    {
+      name: "sd:auth",
+      // Vercel/SSR safety: Zustand's default storage is localStorage which isn't
+      // available server-side. Use a no-op storage on the server.
+      storage: createJSONStorage(() => (typeof window === "undefined" ? noopStorage : localStorage)),
+    }
   )
 );
 
