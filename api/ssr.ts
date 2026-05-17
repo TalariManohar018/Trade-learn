@@ -67,7 +67,7 @@ async function readBody(req: NodeRequest): Promise<Uint8Array | undefined> {
 async function getSsrServer(): Promise<{ fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response }> {
   // Generated during `npm run build`.
   // @ts-ignore - generated file (exists after build) and may have no .d.ts in Vercel typecheck
-  const mod = await import("../dist/server/vercel-ssr-entry.mjs");
+  const mod = await import("../frontend-tradelearn/dist/server/vercel-ssr-entry.mjs");
 
   const entry = (mod as { default?: unknown }).default ?? mod;
   return entry as { fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response };

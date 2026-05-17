@@ -1,0 +1,12 @@
+{
+  "name": "backend-tradelearn",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node scripts/ws-server.cjs",
+    "start": "node scripts/ws-server.cjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
