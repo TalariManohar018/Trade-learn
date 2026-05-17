@@ -1,7 +1,9 @@
 const { WebSocketServer } = require("ws");
 const { randomUUID } = require("crypto");
 
-const PORT = Number(process.env.WS_PORT || 8787);
+// PaaS providers (Render/Railway/Fly/etc.) usually inject PORT.
+// Keep WS_PORT for local/dev overrides.
+const PORT = Number(process.env.PORT || process.env.WS_PORT || 8787);
 const STARTING_CASH = 100000;
 const MATCH_DURATION_MS = 10 * 60 * 1000;
 
